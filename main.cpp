@@ -19,40 +19,6 @@ int min(int a, int b){
     return b;
 }
 
-// A ^ B
-unordered_set<int> set_intersection(unordered_set<int> A, unordered_set<int> B){
-    unordered_set<int> res;
-
-    for(auto it = A.begin(); it != A.end(); it++){
-        int val = *it;
-        if (B.find(val) != B.end()) {
-            res.insert(val);
-        }
-    }
-
-    return res;
-}
-// A \ B
-unordered_set<int> set_difference(unordered_set<int> A, unordered_set<int> B){
-    unordered_set<int> res;
-
-    for(auto it = A.begin(); it != A.end(); it++){
-        int val = *it;
-        if (B.find(val) == B.end()) {
-            res.insert(val);
-        }
-    }
-
-    return res;
-}
-void set_print(unordered_set<int> A){
-    for(auto it = A.begin(); it != A.end(); it++){
-        if(it == A.end()) break;
-        cout<< *it << " ";
-    }
-    cout << endl;
-}
-
 struct ListNode{
     int val;
     ListNode* other_list = nullptr;
@@ -105,49 +71,33 @@ struct LinkedList{
     }
 };
 
-struct Vertex{
-    int id;
-    unordered_set< int > edges;
-    Vertex(int id){
-        this->id = id;
-    }
-    void addEdge(int to){
-        this->edges.insert(to);
-    }
-    void print(){
-        cout << this->id << ":";
-        for (const int& x: this->edges) cout << " " << x;
-        cout<< endl;
-    }
-};
-struct Graph{
+struct SimpleGraph {
     int size;
-    Vertex** vertices;
+    vector<int> *vertices;
 
-    Graph(int sized){
-        this->size = sized;
-        vertices = new Vertex*[size];
-        for(int i=0; i<sized; i++) {
-            vertices[i] = new Vertex(i);
-        }
-
+    SimpleGraph(int size) {
+        this->size = size;
+        vertices = new vector<int>[size];
     }
     void addEdge(int a, int b){
-        this->vertices[a]->addEdge(b);
-        this->vertices[b]->addEdge(a);
-
+        vertices[a].push_back(b);
+        vertices[b].push_back(a);
     }
     void print(){
         for(int i=0; i< this->size; i++){
-            this->vertices[i]->print();
+            cout<<i<<" : ";
+            for(int j=0;j < this->vertices[i].size(); j++)
+                cout<<this->vertices[i][j]<<" ";
+            cout<<endl;
         }
     }
 };
+
 
 struct LexBFSstructure{
     LinkedList* classes;
     LinkedList* elements;
-    Graph* graph = nullptr;
+    SimpleGraph* graph = nullptr;
     unordered_map<int, ListNode*> elements_map;
     LexBFSstructure(){
         classes = new LinkedList();
@@ -175,7 +125,7 @@ struct LexBFSstructure{
             tmp = tmp->next;
         }
     }
-    void initialize_structure(Graph* G){
+    void initialize_structure(SimpleGraph* G){
         graph = G;
         add_initial_elements(G->size);
         add_initial_class();
@@ -202,14 +152,15 @@ struct LexBFSstructure{
         class_node->other_list = elem_node;
         elem_node->other_list = class_node;
     }
-    void partition(unordered_set<int> neighbors, int time){
+    void partition(vector<int> neighbors, int time){
         ListNode* tmp_elem_node;
         ListNode* tmp_class_node, *tmp_next_class_node;
         ListNode* new_class_node;
         unordered_map<int, ListNode*>::const_iterator it;
+        int neighbor;
 
-        for (const auto& neighbor: neighbors) {
-            // if the neigbour isn't in the list
+        for (int i=0; i < neighbors.size(); i++) {
+            neighbor = neighbors[i];
             it = elements_map.find(neighbor);
             if(it == elements_map.end())
                 continue;
@@ -341,34 +292,39 @@ struct LexBFSstructure{
             pivot = get_pivot();
             results[i] = pivot;
 
-            partition(graph->vertices[pivot]->edges, i+1);
+            partition(graph->vertices[pivot], i+1);
         }
+//        cout<<"LEX: ";
+//        for(int i=0; i<graph->size; i++){
+//            cout<<results[i]<<" ";
+//        }
+//        cout<<endl;
 
-//        print();
-//        cout<<"last elem is: "<<get_pivot()<<endl;
-//        print();
         return results;
     }
 };
-int max_clique(Graph* G){
-    int max_cl = 0;
 
-
+int max_clique(SimpleGraph* H){
+    int max_cl = 0, tmp_cl;
     LexBFSstructure* lexBfSstructure = new LexBFSstructure();
-    lexBfSstructure->initialize_structure(G);
+    lexBfSstructure->initialize_structure(H);
+//    lexBfSstructure->print();
 
     int* peo = lexBfSstructure->get_lex_BFS();
 
-    unordered_set<int> tmp_set, peo_set;
+    unordered_set<int> peo_set;
 
-    for(int i=1; i< G->size; i++){
+    for(int i=1; i< H->size; i++){
+        tmp_cl = 1;
         peo_set.insert(peo[i-1]);
-        tmp_set = set_intersection(G->vertices[peo[i]]->edges, peo_set);
-//            cout<<"set"<<i<<endl;
-//            set_print(tmp_set);
-        max_cl = max(max_cl, tmp_set.size()+1);
-    }
 
+        for(int j=0; j<H->vertices[peo[i]].size(); j++)
+            if (peo_set.find(H->vertices[peo[i]][j]) != peo_set.end())
+                tmp_cl ++;
+//        cout<<" TCL: "<<tmp_cl;
+        max_cl = max(max_cl, tmp_cl);
+    }
+//    cout<<endl;
     return max_cl;
 }
 
@@ -378,7 +334,7 @@ int main() {
     int N, M;
     int first, second;
     bool not_tree;
-    Graph* G;
+    SimpleGraph* H;
     while (Z--){
         scanf("%d", &N);
         scanf("%d", &M);
@@ -386,18 +342,21 @@ int main() {
         not_tree = true;
         if(M == N - 1) {
             not_tree = false;
-        }else
-            G = new Graph(N);
+        }else {
+            H = new SimpleGraph(N);
+        }
 
         for(int i = 0; i < M; i++){
             scanf("%d", &first);
             scanf("%d", &second);
 
-            if(not_tree)
-                G->addEdge(first-1, second-1);
+            if(not_tree) {
+                H->addEdge(first - 1, second - 1);
+            }
         }
-        if(not_tree)
-            cout<<max_clique(G) - 1<<endl;
+        if(not_tree) {
+            cout << max_clique(H) - 1 << endl;
+        }
         else
             cout<<2<<endl;
 
