@@ -1,20 +1,12 @@
 #include <iostream>
 #include <unordered_set>
-#include <unordered_map>
 #include <vector>
-#include <queue>
-#include <limits.h>
 
 using namespace std;
 
 
 int max(int a, int b){
     if (a > b)
-        return a;
-    return b;
-}
-int min(int a, int b){
-    if (a < b)
         return a;
     return b;
 }
@@ -32,10 +24,19 @@ struct LinkedList{
     ListNode* head;
     ListNode* tail;
     LinkedList(){
-        head = new ListNode(-1);
-        tail = new ListNode(-1);
+        head = new ListNode(0);
+        tail = new ListNode(0);
         head->next = tail;
         tail->prev = head;
+    }
+    ~LinkedList(){
+        ListNode* tmp;
+        tmp = head->next;
+        while (tmp != nullptr){
+            free(head);
+            tmp = tmp->next;
+        }
+        free(tail);
     }
     void add_node_before(ListNode* new_node, ListNode* next_node){
         ListNode* prev_node = next_node->prev;
@@ -58,7 +59,7 @@ struct LinkedList{
         prev_node->next = next_node;
         next_node->prev = prev_node;
 
-        delete to_del_node;
+        free(to_del_node);
     }
     void del_node_before_tail(){
         del_node_before(tail);
@@ -75,13 +76,16 @@ struct SimpleGraph {
     int size;
     vector<int> *vertices;
 
+
     SimpleGraph(int size) {
         this->size = size;
         vertices = new vector<int>[size];
+
     }
     void addEdge(int a, int b){
         vertices[a].push_back(b);
         vertices[b].push_back(a);
+
     }
     void print(){
         for(int i=0; i< this->size; i++){
@@ -97,8 +101,8 @@ struct SimpleGraph {
 struct LexBFSstructure{
     LinkedList* classes;
     LinkedList* elements;
-    SimpleGraph* graph = nullptr;
-    unordered_map<int, ListNode*> elements_map;
+    SimpleGraph* graph;
+    ListNode** elements_array;
     LexBFSstructure(){
         classes = new LinkedList();
         elements = new LinkedList();
@@ -108,11 +112,25 @@ struct LexBFSstructure{
         classes->tail->other_list = elements->tail;
         elements->tail->other_list = classes->tail;
     }
+    ~LexBFSstructure(){
+        delete classes;
+        delete elements;
+        delete elements_array;
+    }
     void add_initial_elements(int size){
+        elements_array = new ListNode*[size];
+        //gen array
+        int arr[size];
+        for (int i=0; i<size; i++)
+            arr[i] = i;
+
+
+
+        ListNode* new_node;
         for(int i=0; i< size; i++){
-            ListNode* new_node = new ListNode(i);
+            new_node = new ListNode(arr[i]);
             elements->add_node_before_tail(new_node);
-            elements_map[i] = new_node;
+            elements_array[arr[i]] = new_node;
         }
     }
     void add_initial_class(){
@@ -120,7 +138,7 @@ struct LexBFSstructure{
         classes->add_node_before_tail(first_class);
         ListNode* tmp = elements->head->next;
         first_class->other_list = tmp;
-        while (tmp->val != -1) {
+        while (tmp->next) {
             tmp->other_list = first_class;
             tmp = tmp->next;
         }
@@ -135,36 +153,37 @@ struct LexBFSstructure{
         int last_elem;
         ListNode* last_elem_node = elements->tail->prev;
         ListNode* last_class_node = classes->tail->prev;
-        if(last_elem_node == elements->head)
-            return -1;
         last_elem = last_elem_node->val;
         if(last_class_node->other_list == last_elem_node)
             classes->del_node_before_tail();
         elements->del_node_before_tail();
-        elements_map.erase(last_elem);
+        elements_array[last_elem] = nullptr;
         return last_elem;
     }
 
     void add_elem_to_existing_class(ListNode* class_node, ListNode* elem_node){
+        //add as first element
         ListNode* first_elem_of_class = class_node->other_list;
-
         elements->add_node_before(elem_node, first_elem_of_class);
         class_node->other_list = elem_node;
         elem_node->other_list = class_node;
+
     }
-    void partition(vector<int> neighbors, int time){
+    int partition(vector<int> neighbors, int time){
         ListNode* tmp_elem_node;
         ListNode* tmp_class_node, *tmp_next_class_node;
         ListNode* new_class_node;
-        unordered_map<int, ListNode*>::const_iterator it;
         int neighbor;
+        int tmp_clique = 1;
 
         for (int i=0; i < neighbors.size(); i++) {
             neighbor = neighbors[i];
-            it = elements_map.find(neighbor);
-            if(it == elements_map.end())
+            if(elements_array[neighbor] == nullptr) {
+                tmp_clique++;
                 continue;
-            tmp_elem_node = it->second;
+            }
+
+            tmp_elem_node = elements_array[neighbor];
 
             tmp_class_node = tmp_elem_node->other_list;
             tmp_next_class_node = tmp_class_node->next;
@@ -234,14 +253,12 @@ struct LexBFSstructure{
 
             }
 
-
-//            cout<<"after iteration "<<time<<" neigbor was: "<< neighbor <<endl;
-//            print();
         }
+        return tmp_clique;
     }
     void print_elements(){
         ListNode* tmp = elements->head->next;
-        while (tmp->val != -1){
+        while (tmp->next){
             cout << tmp->val<< " ";
             tmp = tmp->next;
         }
@@ -249,7 +266,7 @@ struct LexBFSstructure{
     }
     void print_corresponding_classes(){
         ListNode* tmp = elements->head->next;
-        while (tmp->val != -1){
+        while (tmp->next){
             cout << tmp->other_list->other_list->val << " ";
             tmp = tmp->next;
         }
@@ -257,7 +274,7 @@ struct LexBFSstructure{
     }
     void print_classes(){
         ListNode* tmp = classes->head->next;
-        while (tmp->val != -1){
+        while (tmp->next){
             cout << tmp->other_list->val<< " ";
             tmp = tmp->next;
         }
@@ -265,7 +282,7 @@ struct LexBFSstructure{
     }
     void print_corresponding_elements(){
         ListNode* tmp = classes->head->next;
-        while (tmp->val != -1){
+        while (tmp->next){
             cout << tmp->other_list->val << " ";
             tmp = tmp->next;
         }
@@ -294,37 +311,57 @@ struct LexBFSstructure{
 
             partition(graph->vertices[pivot], i+1);
         }
-//        cout<<"LEX: ";
-//        for(int i=0; i<graph->size; i++){
-//            cout<<results[i]<<" ";
-//        }
-//        cout<<endl;
+        cout<<endl;
 
         return results;
     }
+
+    int get_max_possible_clique(){
+        int* counter;
+        counter = new int[graph->size];
+        for(int i=0; i< graph->size; i++){
+            counter[i] = 0;
+        }
+        for(int i=0; i< graph->size; i++){
+            counter[graph->vertices[i].size()]  ++;
+        }
+        for(int i=graph->size - 2 ; i>= 0; i--){
+            counter[i] += counter[i+1];
+            if( counter[i] >= i + 1) {
+                free(counter);
+                return i + 1;
+            }
+        }
+
+
+    }
+
+    int get_max_clique(){
+
+        int pivot,max_cl=0,tmp_cl,max_pos_cl;
+        max_pos_cl = get_max_possible_clique();
+
+        for(int i=0; i<graph->size; i++){
+            pivot = get_pivot();
+
+            tmp_cl = partition(graph->vertices[pivot], i+1);
+            max_cl = max(max_cl,tmp_cl);
+            if(max_cl == max_pos_cl) {
+                return max_cl;
+            }
+        }
+
+        return max_cl;
+    }
 };
 
-int max_clique(SimpleGraph* H){
-    int max_cl = 0, tmp_cl;
+int max_clique_algorithm(SimpleGraph* H){
+    int max_cl = 0;
     LexBFSstructure* lexBfSstructure = new LexBFSstructure();
     lexBfSstructure->initialize_structure(H);
-//    lexBfSstructure->print();
 
-    int* peo = lexBfSstructure->get_lex_BFS();
+    max_cl = lexBfSstructure->get_max_clique();
 
-    unordered_set<int> peo_set;
-
-    for(int i=1; i< H->size; i++){
-        tmp_cl = 1;
-        peo_set.insert(peo[i-1]);
-
-        for(int j=0; j<H->vertices[peo[i]].size(); j++)
-            if (peo_set.find(H->vertices[peo[i]][j]) != peo_set.end())
-                tmp_cl ++;
-//        cout<<" TCL: "<<tmp_cl;
-        max_cl = max(max_cl, tmp_cl);
-    }
-//    cout<<endl;
     return max_cl;
 }
 
@@ -333,16 +370,20 @@ int main() {
     scanf("%d", &Z);
     int N, M;
     int first, second;
-    bool not_tree;
+    bool tree, clique;
     SimpleGraph* H;
     while (Z--){
         scanf("%d", &N);
         scanf("%d", &M);
 
-        not_tree = true;
+        tree = false;
+        clique = false;
         if(M == N - 1) {
-            not_tree = false;
-        }else {
+            tree = true;
+        }else if(M == N*(N-1)/2){
+            clique = true;
+        }
+        else{
             H = new SimpleGraph(N);
         }
 
@@ -350,15 +391,17 @@ int main() {
             scanf("%d", &first);
             scanf("%d", &second);
 
-            if(not_tree) {
+            if(!tree && !clique)
                 H->addEdge(first - 1, second - 1);
-            }
         }
-        if(not_tree) {
-            cout << max_clique(H) - 1 << endl;
-        }
-        else
+        if(tree)
             cout<<2<<endl;
+        else if(clique)
+            cout<<N-1<<endl;
+        else
+            cout << max_clique_algorithm(H) - 1 << endl;
+
+        delete H;
 
     }
     return 0;
