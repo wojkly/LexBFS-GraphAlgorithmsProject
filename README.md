@@ -1,4 +1,4 @@
-# LexBFS_Graph_Algorithms_Project
+# LexBFS-GraphAlgorithmsProject
 
 Project description can be found at https://faliszew.github.io/algograf/2020.project2 (in Polish).
 
